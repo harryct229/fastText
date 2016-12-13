@@ -144,8 +144,8 @@ void FastText::skipgram(Model& model, real lr,
   }
 }
 
-void FastText::test(std::istream& in, int32_t k) {
-  int32_t nexamples = 0, nlabels = 0;
+void FastText::test(std::istream& in, float k) {
+  int32_t nexamples = 0, npredictions = 0, nlabels = 0, ntags;
   double precision = 0.0;
   std::vector<int32_t> line, labels;
 
@@ -153,40 +153,44 @@ void FastText::test(std::istream& in, int32_t k) {
     dict_->getLine(in, line, labels, model_->rng);
     dict_->addNgrams(line, args_->wordNgrams);
     if (labels.size() > 0 && line.size() > 0) {
+      ntags = outputSize(line.size(), k);
       std::vector<std::pair<real, int32_t>> modelPredictions;
-      model_->predict(line, k, modelPredictions);
+      model_->predict(line, ntags, modelPredictions);
       for (auto it = modelPredictions.cbegin(); it != modelPredictions.cend(); it++) {
         if (std::find(labels.begin(), labels.end(), it->second) != labels.end()) {
           precision += 1.0;
         }
       }
-      nexamples++;
+      nexamples += 1;
+      npredictions += ntags;
       nlabels += labels.size();
     }
   }
   std::cout << std::setprecision(3);
-  std::cout << "P@" << k << ": " << precision / (k * nexamples) << std::endl;
-  std::cout << "R@" << k << ": " << precision / nlabels << std::endl;
+  std::cout << "P: " << precision / npredictions << std::endl;
+  std::cout << "R: " << precision / nlabels << std::endl;
   std::cout << "Number of examples: " << nexamples << std::endl;
 }
 
-void FastText::predict(std::istream& in, int32_t k,
-                       std::vector<std::pair<real,std::string>>& predictions) const {
+void FastText::predict(std::istream& in, float k,
+                       std::vector<std::pair<real,std::string>>& predictions) {
   std::vector<int32_t> words, labels;
+  int32_t ntags;
   dict_->getLine(in, words, labels, model_->rng);
   dict_->addNgrams(words, args_->wordNgrams);
+  ntags = outputSize(words.size(), k);
   if (words.empty()) return;
   Vector hidden(args_->dim);
   Vector output(dict_->nlabels());
   std::vector<std::pair<real,int32_t>> modelPredictions;
-  model_->predict(words, k, modelPredictions, hidden, output);
+  model_->predict(words, ntags, modelPredictions, hidden, output);
   predictions.clear();
   for (auto it = modelPredictions.cbegin(); it != modelPredictions.cend(); it++) {
     predictions.push_back(std::make_pair(it->first, dict_->getLabel(it->second)));
   }
 }
 
-void FastText::predict(std::istream& in, int32_t k, bool print_prob) {
+void FastText::predict(std::istream& in, float k, bool print_prob) {
   std::vector<std::pair<real,std::string>> predictions;
   while (in.peek() != EOF) {
     predict(in, k, predictions);
@@ -205,6 +209,10 @@ void FastText::predict(std::istream& in, int32_t k, bool print_prob) {
     }
     std::cout << std::endl;
   }
+}
+
+int32_t FastText::outputSize(int32_t size, float k) {
+  return round(size + size * pow(k, -0.1 * size));
 }
 
 void FastText::wordVectors() {

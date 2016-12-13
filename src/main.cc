@@ -33,7 +33,7 @@ void printTestUsage() {
     << "usage: fasttext test <model> <test-data> [<k>]\n\n"
     << "  <model>      model filename\n"
     << "  <test-data>  test data filename (if -, read from stdin)\n"
-    << "  <k>          (optional; 1 by default) predict top k labels\n"
+    << "  <k>          (optional; 2 by default) number of tags function factor\n"
     << std::endl;
 }
 
@@ -42,7 +42,7 @@ void printPredictUsage() {
     << "usage: fasttext predict[-prob] <model> <test-data> [<k>]\n\n"
     << "  <model>      model filename\n"
     << "  <test-data>  test data filename (if -, read from stdin)\n"
-    << "  <k>          (optional; 1 by default) predict top k labels\n"
+    << "  <k>          (optional; 2 by default) number of tags function factor\n"
     << std::endl;
 }
 
@@ -54,11 +54,11 @@ void printPrintVectorsUsage() {
 }
 
 void test(int argc, char** argv) {
-  int32_t k;
+  float k;
   if (argc == 4) {
-    k = 1;
+    k = 2;
   } else if (argc == 5) {
-    k = atoi(argv[4]);
+    k = atof(argv[4]);
   } else {
     printTestUsage();
     exit(EXIT_FAILURE);
@@ -83,9 +83,9 @@ void test(int argc, char** argv) {
 void predict(int argc, char** argv) {
   int32_t k;
   if (argc == 4) {
-    k = 1;
+    k = 2;
   } else if (argc == 5) {
-    k = atoi(argv[4]);
+    k = atof(argv[4]);
   } else {
     printPredictUsage();
     exit(EXIT_FAILURE);
