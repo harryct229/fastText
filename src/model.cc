@@ -14,6 +14,7 @@
 #include <algorithm>
 
 #include "utils.h"
+#include <iostream>
 
 namespace fasttext {
 
@@ -124,33 +125,33 @@ bool Model::comparePairs(const std::pair<real, int32_t> &l,
 
 void Model::predict(const std::vector<int32_t>& input, int32_t k,
                     std::vector<std::pair<real, int32_t>>& heap,
-                    Vector& hidden, Vector& output) const {
+                    Vector& hidden, Vector& output, bool find_all) const {
   assert(k > 0);
   heap.reserve(k + 1);
   computeHidden(input, hidden);
   if (args_->loss == loss_name::hs) {
-    dfs(k, 2 * osz_ - 2, 0.0, heap, hidden);
+    dfs(k, 2 * osz_ - 2, 0.0, heap, hidden, find_all);
   } else {
-    findKBest(k, heap, hidden, output);
+    findKBest(k, heap, hidden, output, find_all);
   }
   std::sort_heap(heap.begin(), heap.end(), comparePairs);
 }
 
 void Model::predict(const std::vector<int32_t>& input, int32_t k,
                     std::vector<std::pair<real, int32_t>>& heap) {
-  predict(input, k, heap, hidden_, output_);
+  predict(input, k, heap, hidden_, output_, false);
 }
 
 void Model::findKBest(int32_t k, std::vector<std::pair<real, int32_t>>& heap,
-                      Vector& hidden, Vector& output) const {
+                      Vector& hidden, Vector& output, bool find_all) const {
   computeOutputSoftmax(hidden, output);
   for (int32_t i = 0; i < osz_; i++) {
-    if (heap.size() == k && log(output[i]) < heap.front().first) {
+    if (!find_all && heap.size() == k && log(output[i]) < heap.front().first) {
       continue;
     }
     heap.push_back(std::make_pair(log(output[i]), i));
     std::push_heap(heap.begin(), heap.end(), comparePairs);
-    if (heap.size() > k) {
+    if (!find_all && heap.size() > k) {
       std::pop_heap(heap.begin(), heap.end(), comparePairs);
       heap.pop_back();
     }
@@ -159,15 +160,15 @@ void Model::findKBest(int32_t k, std::vector<std::pair<real, int32_t>>& heap,
 
 void Model::dfs(int32_t k, int32_t node, real score,
                 std::vector<std::pair<real, int32_t>>& heap,
-                Vector& hidden) const {
-  if (heap.size() == k && score < heap.front().first) {
+                Vector& hidden, bool find_all) const {
+  if (!find_all && heap.size() == k && score < heap.front().first) {
     return;
   }
 
   if (tree[node].left == -1 && tree[node].right == -1) {
     heap.push_back(std::make_pair(score, node));
     std::push_heap(heap.begin(), heap.end(), comparePairs);
-    if (heap.size() > k) {
+    if (!find_all && heap.size() > k) {
       std::pop_heap(heap.begin(), heap.end(), comparePairs);
       heap.pop_back();
     }
@@ -175,8 +176,8 @@ void Model::dfs(int32_t k, int32_t node, real score,
   }
 
   real f = sigmoid(wo_->dotRow(hidden, node - osz_));
-  dfs(k, tree[node].left, score + log(1.0 - f), heap, hidden);
-  dfs(k, tree[node].right, score + log(f), heap, hidden);
+  dfs(k, tree[node].left, score + log(1.0 - f), heap, hidden, find_all);
+  dfs(k, tree[node].right, score + log(f), heap, hidden, find_all);
 }
 
 void Model::update(const std::vector<int32_t>& input, int32_t target, real lr) {

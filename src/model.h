@@ -78,14 +78,14 @@ class Model {
 
     void predict(const std::vector<int32_t>&, int32_t,
                  std::vector<std::pair<real, int32_t>>&,
-                 Vector&, Vector&) const;
+                 Vector&, Vector&, bool) const;
     void predict(const std::vector<int32_t>&, int32_t,
                  std::vector<std::pair<real, int32_t>>&);
     void dfs(int32_t, int32_t, real,
              std::vector<std::pair<real, int32_t>>&,
-             Vector&) const;
+             Vector&, bool) const;
     void findKBest(int32_t, std::vector<std::pair<real, int32_t>>&,
-                   Vector&, Vector&) const;
+                   Vector&, Vector&, bool) const;
     void update(const std::vector<int32_t>&, int32_t, real);
     void computeHidden(const std::vector<int32_t>&, Vector&) const;
     void computeOutputSoftmax(Vector&, Vector&) const;

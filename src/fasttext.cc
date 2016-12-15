@@ -172,8 +172,9 @@ void FastText::test(std::istream& in, float k) {
   std::cout << "Number of examples: " << nexamples << std::endl;
 }
 
-void FastText::predict(std::istream& in, float k,
-                       std::vector<std::pair<real,std::string>>& predictions) {
+void FastText::predict(std::istream& in, float k, float min_conf,
+                       std::vector<std::pair<real,std::string>>& predictions,
+                       PredictionType prediction_type) {
   std::vector<int32_t> words, labels;
   int32_t ntags;
   dict_->getLine(in, words, labels, model_->rng);
@@ -183,32 +184,77 @@ void FastText::predict(std::istream& in, float k,
   Vector hidden(args_->dim);
   Vector output(dict_->nlabels());
   std::vector<std::pair<real,int32_t>> modelPredictions;
-  model_->predict(words, ntags, modelPredictions, hidden, output);
-  predictions.clear();
-  for (auto it = modelPredictions.cbegin(); it != modelPredictions.cend(); it++) {
-    predictions.push_back(std::make_pair(it->first, dict_->getLabel(it->second)));
+
+  switch (prediction_type) {
+    case CONFIDENCE:
+    case COMBINATION:
+      model_->predict(words, ntags, modelPredictions, hidden, output, true);
+      computeConfidenceScore(modelPredictions, predictions, prediction_type,
+                             ntags, min_conf);
+      break;
+    default:
+      model_->predict(words, ntags, modelPredictions, hidden, output, false);
+      for (auto it = modelPredictions.cbegin();
+           it != modelPredictions.cend(); it++) {
+        predictions.push_back(std::make_pair(exp(it->first),
+                              dict_->getLabel(it->second)));
+      }
   }
 }
 
-void FastText::predict(std::istream& in, float k, bool print_prob) {
+void FastText::predict(std::istream& in, float k, float min_conf,
+                       PredictionType prediction_type) {
   std::vector<std::pair<real,std::string>> predictions;
-  while (in.peek() != EOF) {
-    predict(in, k, predictions);
-    if (predictions.empty()) {
-      std::cout << "n/a" << std::endl;
-      continue;
-    }
-    for (auto it = predictions.cbegin(); it != predictions.cend(); it++) {
-      if (it != predictions.cbegin()) {
-        std::cout << ' ';
-      }
-      std::cout << it->second;
-      if (print_prob) {
-        std::cout << ' ' << exp(it->first);
-      }
-    }
-    std::cout << std::endl;
+
+  predict(in, k, min_conf, predictions, prediction_type);
+  printPredict(predictions, prediction_type);
+}
+
+void FastText::computeConfidenceScore(
+  std::vector<std::pair<real,int32_t>> modelPredictions,
+  std::vector<std::pair<real,std::string>>& predictions,
+  PredictionType prediction_type, int32_t ntags, float min_conf) {
+  predictions.clear();
+  float scores[modelPredictions.size()], mean, stdevp, conf;
+  int i = 0;
+  for (auto it = modelPredictions.cbegin();
+       it != modelPredictions.cend(); it++) {
+    scores[i] = exp(it->first);
+    i++;
   }
+  mean = utils::calculateMean(scores, i);
+  stdevp = utils::calculateStandardDeviation(scores, i, mean);
+  i = 0;
+  for (auto it = modelPredictions.cbegin();
+       it != modelPredictions.cend(); it++) {
+    conf = utils::softmaxNormalize(scores[i], stdevp, mean);
+    i++;
+    if (prediction_type == CONFIDENCE && conf < min_conf) {
+      break;
+    } else if (prediction_type == COMBINATION && (conf < min_conf || i > ntags)) {
+      break;
+    }
+    predictions.push_back(std::make_pair(conf, dict_->getLabel(it->second)));
+  }
+}
+
+void FastText::printPredict(std::vector<std::pair<real,std::string>> predictions,
+                            PredictionType prediction_type) {
+  std::cout.precision(20);
+  if (predictions.empty()) {
+    std::cout << "n/a" << std::endl;
+    return;
+  }
+  for (auto it = predictions.cbegin(); it != predictions.cend(); it++) {
+    if (it != predictions.cbegin()) {
+      std::cout << ' ';
+    }
+    std::cout << it->second;
+    if (prediction_type != ONLY_WORD) {
+      std::cout << ' ' << it->first;
+    }
+  }
+  std::cout << std::endl;
 }
 
 int32_t FastText::outputSize(int32_t size, float k) {

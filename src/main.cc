@@ -10,6 +10,7 @@
 #include <iostream>
 
 #include "fasttext.h"
+#include "prediction_type.h"
 #include "args.h"
 
 using namespace fasttext;
@@ -22,6 +23,7 @@ void printUsage() {
     << "  test                evaluate a supervised classifier\n"
     << "  predict             predict most likely labels\n"
     << "  predict-prob        predict most likely labels with probabilities\n"
+    << "  predict-conf        predict most likely labels with confidences\n"
     << "  skipgram            train a skipgram model\n"
     << "  cbow                train a cbow model\n"
     << "  print-vectors       print vectors given a trained model\n"
@@ -81,29 +83,49 @@ void test(int argc, char** argv) {
 }
 
 void predict(int argc, char** argv) {
-  int32_t k;
+  int32_t k = 2;
+  float min_conf = 0.95;
+  PredictionType prediction_type;
+
   if (argc == 4) {
     k = 2;
+    min_conf = 0.95;
   } else if (argc == 5) {
+    if (std::string(argv[1]) == "predict-prob") {
+      k = atof(argv[4]);
+    } else if (std::string(argv[1]) == "predict-conf") {
+      min_conf = atof(argv[4]);
+    }
+  } else if (argc == 6 && std::string(argv[1]) == "predict-comb") {
     k = atof(argv[4]);
+    min_conf = atof(argv[5]);
   } else {
     printPredictUsage();
     exit(EXIT_FAILURE);
   }
-  bool print_prob = std::string(argv[1]) == "predict-prob";
+
+  if (std::string(argv[1]) == "predict-prob") {
+    prediction_type = PROBABILITY;
+  } else if (std::string(argv[1]) == "predict-conf") {
+    prediction_type = CONFIDENCE;
+  } else if (std::string(argv[1]) == "predict-comb") {
+    prediction_type = COMBINATION;
+  }else {
+    prediction_type = ONLY_WORD;
+  }
   FastText fasttext;
   fasttext.loadModel(std::string(argv[2]));
 
   std::string infile(argv[3]);
   if (infile == "-") {
-    fasttext.predict(std::cin, k, print_prob);
+    fasttext.predict(std::cin, k, min_conf, prediction_type);
   } else {
     std::ifstream ifs(infile);
     if (!ifs.is_open()) {
       std::cerr << "Input file cannot be opened!" << std::endl;
       exit(EXIT_FAILURE);
     }
-    fasttext.predict(ifs, k, print_prob);
+    fasttext.predict(ifs, k, min_conf, prediction_type);
     ifs.close();
   }
 
@@ -140,7 +162,8 @@ int main(int argc, char** argv) {
     test(argc, argv);
   } else if (command == "print-vectors") {
     printVectors(argc, argv);
-  } else if (command == "predict" || command == "predict-prob" ) {
+  } else if (command == "predict" || command == "predict-prob" ||
+             command == "predict-conf" || command == "predict-comb") {
     predict(argc, argv);
   } else {
     printUsage();

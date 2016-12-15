@@ -22,6 +22,7 @@
 #include "utils.h"
 #include "real.h"
 #include "args.h"
+#include "prediction_type.h"
 
 namespace fasttext {
 
@@ -34,6 +35,9 @@ class FastText {
     std::shared_ptr<Model> model_;
     std::atomic<int64_t> tokenCount;
     clock_t start;
+    void printPredict(std::vector<std::pair<real,std::string>>, PredictionType);
+    void computeConfidenceScore(std::vector<std::pair<real,int32_t>>,
+      std::vector<std::pair<real,std::string>>&, PredictionType, int32_t, float);
     int32_t outputSize(int32_t, float);
 
   public:
@@ -49,8 +53,9 @@ class FastText {
     void cbow(Model&, real, const std::vector<int32_t>&);
     void skipgram(Model&, real, const std::vector<int32_t>&);
     void test(std::istream&, float);
-    void predict(std::istream&, float, bool);
-    void predict(std::istream&, float, std::vector<std::pair<real,std::string>>&);
+    void predict(std::istream&, float, float, PredictionType);
+    void predict(std::istream&, float, float,
+                 std::vector<std::pair<real,std::string>>&, PredictionType);
     void wordVectors();
     void textVectors();
     void printVectors();

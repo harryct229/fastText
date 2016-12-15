@@ -11,6 +11,8 @@
 #define FASTTEXT_UTILS_H
 
 #include <fstream>
+#include <vector>
+#include "real.h"
 
 namespace fasttext {
 
@@ -18,6 +20,10 @@ namespace utils {
 
   int64_t size(std::ifstream&);
   void seek(std::ifstream&, int64_t);
+  float softmaxNormalize(float, float, float);
+  float calculateMean(float[], int);
+  float calculateStandardDeviation(float[], int);
+  float calculateStandardDeviation(float[], int, float);
 }
 
 }

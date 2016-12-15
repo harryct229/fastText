@@ -25,6 +25,54 @@ namespace utils {
     ifs.clear();
     ifs.seekg(std::streampos(pos));
   }
+
+  float softmaxNormalize(float value, float stdevp, float mean) {
+    if (stdevp == 0)
+      return 0;
+    return 1.0 / (1.0 + exp(-1.0 * (value - mean) / stdevp));
+  }
+
+  float calculateMean(float data[], int size) {
+    if (size == 0)
+      return 0;
+
+    float sum = 0.0;
+    unsigned int i;
+
+    for (unsigned int i = 0; i < size; i++) {
+      sum += data[i];
+    }
+
+    return sum / size;
+  }
+
+  float calculateStandardDeviation(float data[], int size) {
+    if (size == 0)
+      return 0;
+
+    float mean, standard_deviation = 0.0;
+
+    mean = calculateMean(data, size);
+
+    for (unsigned int i = 0; i < size; i++) {
+      standard_deviation += pow(data[i] - mean, 2);
+    }
+
+    return sqrt(standard_deviation / size);
+  }
+
+  float calculateStandardDeviation(float data[], int size, float mean) {
+    if (size == 0)
+      return 0;
+
+    float standard_deviation = 0.0;
+
+    for (unsigned int i = 0; i < size; i++) {
+      standard_deviation += pow(data[i] - mean, 2);
+    }
+
+    return sqrt(standard_deviation / size);
+  }
 }
 
 }
