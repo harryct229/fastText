@@ -184,6 +184,7 @@ void FastText::predict(std::istream& in, float k, float min_conf,
   Vector hidden(args_->dim);
   Vector output(dict_->nlabels());
   std::vector<std::pair<real,int32_t>> modelPredictions;
+  predictions.clear();
 
   switch (prediction_type) {
     case CONFIDENCE:
@@ -206,8 +207,10 @@ void FastText::predict(std::istream& in, float k, float min_conf,
                        PredictionType prediction_type) {
   std::vector<std::pair<real,std::string>> predictions;
 
-  predict(in, k, min_conf, predictions, prediction_type);
-  printPredict(predictions, prediction_type);
+  while (in.peek() != EOF) {
+    predict(in, k, min_conf, predictions, prediction_type);
+    printPredict(predictions, prediction_type);
+  }
 }
 
 void FastText::computeConfidenceScore(
